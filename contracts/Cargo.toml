@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "vendor/ultrahonk-soroban-verifier",
+    "vendor/ultrahonk-test-utils",
+    "obol_verifier",
+    "liveness_registry",
+    "vault_controller",
+    "keeper_registry",
+    "mock_token",
+]
+exclude = ["tools/input_gen"]
+
+[workspace.dependencies]
+soroban-sdk = { version = "26.0.1", default-features = false }
+soroban-poseidon = "26.0.0"
+ultrahonk_soroban_verifier = { path = "vendor/ultrahonk-soroban-verifier", default-features = false }
+
+# WASM contracts are optimized for size; host tools (input_gen) inherit but are
+# built for the native target where these settings are harmless.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = true
