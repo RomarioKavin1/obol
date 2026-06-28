@@ -1,0 +1,19 @@
+[package]
+name = "obol_verifier"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Obol on-chain UltraHonk proof verifier (Soroban)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true, features = ["alloc"] }
+ultrahonk_soroban_verifier = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
+[features]
+default = []
