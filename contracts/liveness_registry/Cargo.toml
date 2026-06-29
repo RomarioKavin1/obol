@@ -1,0 +1,23 @@
+[package]
+name = "liveness_registry"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Obol LivenessRegistry: anonymous proof-of-life group + dead-man's-switch"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true, features = ["alloc"] }
+soroban-poseidon = { workspace = true }
+ultrahonk_soroban_verifier = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
+obol_verifier = { path = "../obol_verifier" }
+vault_controller = { path = "../vault_controller" }
+mock_token = { path = "../mock_token" }
+
+[features]
+default = []
