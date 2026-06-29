@@ -1,0 +1,18 @@
+[package]
+name = "mock_token"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Obol mock SEP-41 token for demos and tests"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
+[features]
+default = []
