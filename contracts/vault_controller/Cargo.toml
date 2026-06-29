@@ -1,0 +1,18 @@
+[package]
+name = "vault_controller"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Obol VaultController: token escrow with a sealed beneficiary and death-triggered claim"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
+[features]
+default = []
