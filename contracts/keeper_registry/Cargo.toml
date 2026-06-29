@@ -1,0 +1,18 @@
+[package]
+name = "keeper_registry"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Obol KeeperRegistry: staking for the dead-man's-switch keeper network"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
+[features]
+default = []
