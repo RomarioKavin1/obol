@@ -1,0 +1,16 @@
+[package]
+name = "input_gen"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Standalone host-side tool (its own workspace so it can run before the contract
+# crates exist / independently of the wasm build). Computes Merkle witnesses and
+# public inputs with the SAME Poseidon2 as the circuit and the on-chain tree,
+# then writes the circuit's Prover.toml. Run with: cargo run
+[workspace]
+
+[dependencies]
+soroban-sdk = { version = "26.0.1", features = ["testutils"] }
+soroban-poseidon = "26.0.0"
+num-bigint = "0.4"
