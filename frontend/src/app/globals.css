@@ -1,0 +1,260 @@
+@import "tailwindcss";
+@source "../**/*.{ts,tsx}";
+
+/* In Tailwind v4, custom theme values must be declared in @theme */
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-archivo);
+
+  /* Warm-tinted neutrals (never pure #000/#fff): a near-black patinated bronze
+     ground with an off-white "bone" foreground. Chroma stays low so it reads as
+     black/white but carries the brand hue. Accent = the obol, an antique coin. */
+  --color-background: oklch(0.135 0.006 74);
+  --color-foreground: oklch(0.955 0.006 86);
+
+  --color-card: oklch(0.175 0.007 74);
+  --color-card-hover: oklch(0.205 0.008 74);
+  --color-card-border: oklch(0.27 0.009 74);
+  --color-card-border-hover: oklch(0.42 0.011 74);
+
+  --color-primary: oklch(0.955 0.006 86);
+  --color-primary-hover: oklch(0.88 0.006 86);
+  --color-primary-glow: oklch(0.955 0.006 86 / 0.1);
+
+  --color-secondary: oklch(0.62 0.008 74);
+  --color-secondary-hover: oklch(0.72 0.008 74);
+
+  --color-muted: oklch(0.2 0.007 74);
+  --color-muted-foreground: oklch(0.6 0.009 74);
+  --color-border: oklch(0.3 0.009 74);
+
+  --color-success: oklch(0.72 0.15 155);
+  --color-destructive: oklch(0.63 0.2 25);
+  /* The obol: antique bronze-gold. Used sparingly (<=10% of any surface). */
+  --color-accent: oklch(0.74 0.11 72);
+  --color-accent-dim: oklch(0.74 0.11 72 / 0.14);
+}
+
+@layer base {
+  :root {
+    /* Provide mapping for inline styles in layout.tsx */
+    --background: var(--color-background);
+    --foreground: var(--color-foreground);
+    --card: var(--color-card);
+    --card-border: var(--color-card-border);
+    --primary: var(--color-primary);
+    --secondary: var(--color-secondary);
+    --muted: var(--color-muted);
+    --muted-foreground: var(--color-muted-foreground);
+    --success: var(--color-success);
+    --destructive: var(--color-destructive);
+    --accent: var(--color-accent);
+    --accent-dim: var(--color-accent-dim);
+    --card-hover: var(--color-card-hover);
+    --card-border-hover: var(--color-card-border-hover);
+  }
+
+  * {
+    box-sizing: border-box;
+    /* Removed padding/margin 0 reset as Tailwind handles this */
+  }
+
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: hidden;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Monumental display type for headings; body stays in the humanist sans. */
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+
+  /* Brutalist Panels */
+  .brutal-panel {
+    background: var(--color-background);
+    border: 1px solid var(--color-card-border);
+    transition: all 0.2s ease-in-out;
+  }
+
+  .brutal-panel:hover {
+    background: var(--color-card);
+    border-color: var(--color-foreground);
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-card-border);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-secondary);
+  }
+
+  /* The obol: an antique bronze coin, minted in CSS. Used as the hero motif. */
+  .obol-coin {
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle at 38% 30%,
+      oklch(0.88 0.08 82) 0%,
+      oklch(0.74 0.11 70) 32%,
+      oklch(0.55 0.1 62) 66%,
+      oklch(0.42 0.08 58) 100%
+    );
+    box-shadow:
+      inset 0 3px 8px oklch(0.93 0.05 85 / 0.5),
+      inset 0 -12px 30px oklch(0.3 0.06 55 / 0.75),
+      0 30px 80px oklch(0.08 0.03 60 / 0.65);
+  }
+  .obol-coin::before {
+    content: "";
+    position: absolute;
+    inset: 6%;
+    border-radius: 9999px;
+    border: 1px solid oklch(0.86 0.07 82 / 0.55);
+    box-shadow: inset 0 0 30px oklch(0.34 0.07 58 / 0.65);
+    pointer-events: none;
+  }
+  .obol-coin::after {
+    /* slow shine sweep */
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: linear-gradient(
+      115deg,
+      transparent 35%,
+      oklch(0.98 0.03 88 / 0.35) 48%,
+      transparent 60%
+    );
+    background-size: 300% 300%;
+    animation: coin-shine 7s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes coin-shine {
+    0%,
+    100% {
+      background-position: 130% 0%;
+    }
+    50% {
+      background-position: -30% 0%;
+    }
+  }
+
+  /* --- Shared product surface vocabulary (matches the landing language) --- */
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: var(--color-muted-foreground);
+  }
+  .panel {
+    background: var(--color-card);
+    border: 1px solid var(--color-card-border);
+  }
+  .field {
+    width: 100%;
+    background: var(--color-background);
+    border: 1px solid var(--color-card-border);
+    color: var(--color-foreground);
+    padding: 0.85rem 1rem;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .field::placeholder {
+    color: var(--color-muted-foreground);
+  }
+  .field:focus {
+    border-color: var(--color-card-border-hover);
+  }
+  .btn-accent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--color-accent);
+    color: var(--color-background);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    padding: 0.9rem 1.25rem;
+    transition: opacity 0.15s ease;
+  }
+  .btn-accent:hover {
+    opacity: 0.9;
+  }
+  .btn-accent:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--color-card-border);
+    color: var(--color-foreground);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    padding: 0.9rem 1.25rem;
+    transition: border-color 0.15s ease;
+  }
+  .btn-ghost:hover {
+    border-color: var(--color-foreground);
+  }
+
+  /* Accent underline link */
+  .link-accent {
+    color: var(--color-accent);
+    border-bottom: 1px solid oklch(0.74 0.11 72 / 0.4);
+    transition: border-color 0.2s ease;
+  }
+  .link-accent:hover {
+    border-color: var(--color-accent);
+  }
+
+  /* Noise Overlay */
+  .bg-noise {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+}
