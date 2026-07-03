@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * Wallet connect button for the navbar. Thin UI over useWallet()
+ * (lib/wallet.tsx): disconnected it triggers connect(), which opens the Stellar
+ * Wallets Kit modal (Freighter, xBull, Albedo, Rabet, Hana); connected it shows
+ * the shortened address with a copy / disconnect dropdown. All session state
+ * (selected wallet persistence, reconnection) lives in WalletProvider — this
+ * component holds only local menu/copied UI state.
+ */
+
 import { useState } from "react";
 import { Wallet, ChevronDown, LogOut, Copy, Check } from "lucide-react";
 import { clsx } from "clsx";

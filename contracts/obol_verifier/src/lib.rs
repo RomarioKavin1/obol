@@ -4,7 +4,9 @@
 //! A thin Soroban wrapper around the `ultrahonk_soroban_verifier` crate. The
 //! verification key (VK) for the Obol liveness circuit is supplied once at
 //! deployment and is immutable thereafter. `verify_proof` checks that a proof
-//! is valid for the given public inputs under that VK.
+//! is valid for the given public inputs under that VK. In the protocol the
+//! LivenessRegistry cross-calls `verify_proof` on every `checkin`; verification
+//! is stateless and permissionless, so anyone may also call it directly.
 //!
 //! Trust model: no admin, no upgrade path. Callers should independently confirm
 //! the stored VK (via `vk_bytes`) matches the audited Obol circuit before

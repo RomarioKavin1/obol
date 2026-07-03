@@ -11,6 +11,9 @@ whole way through, and the heir's identity stays sealed until the moment they cl
 > Named after the *obol*, the coin placed with the dead to pay Charon for passage across
 > the Styx. Obol is that coin, made programmable and private.
 
+**Live demo (Stellar testnet):** https://obol-two.vercel.app — the full lifecycle runs in
+the browser, including ZK proof generation.
+
 ---
 
 ## What it is
@@ -41,7 +44,10 @@ primitives do the work:
 
 1. **Anonymous membership.** Owners are leaves in an on-chain Poseidon2 Merkle tree
    (depth 20 — up to ~1M members). A check-in proves *"I am one of the registered
-   owners"* without revealing which one and without a wallet signature.
+   owners"* without revealing which one and without a wallet signature. The registry
+   stores every leaf (`get_leaves`), so any member's prover can rebuild the tree
+   client-side and derive a fresh Merkle witness no matter how many owners registered
+   before or after them.
 
 2. **Epoch-bound nullifiers.** `nullifier_hash = Poseidon2(nullifier, epoch)` produces
    exactly one unrepeatable liveness token per time window. Replaying an old proof or
@@ -63,10 +69,12 @@ Soroban contract.
 ## Architecture
 
 ```
-                         OWNER (private device)
+                         OWNER (browser)
                                 │
                  ┌──────────────┴───────────────┐
-                 │  generate UltraHonk proof     │
+                 │  fetch leaves -> build        │
+                 │  Merkle witness -> generate   │
+                 │  UltraHonk proof (bb.js)      │
                  │  public: root, id_commitment, │
                  │          nullifier_hash, epoch│
                  └──────────────┬────────────────┘
@@ -75,7 +83,8 @@ Soroban contract.
                    ┌────────────────────────┐        verify_proof()      ┌──────────────┐
                    │   LivenessRegistry      │ ─────────────────────────► │ ObolVerifier │
                    │  • Poseidon2 Merkle     │ ◄───────────────────────── │  (UltraHonk) │
-                   │    (incremental, d=20)  │           ok / err         └──────────────┘
+                   │    (incremental, d=20,  │           ok / err         └──────────────┘
+                   │    leaves readable)     │
                    │  • epoch nullifiers     │
                    │  • last_checkin, missed │
                    └────────────┬────────────┘
@@ -96,8 +105,10 @@ Soroban contract.
 ```
 
 - **LivenessRegistry** — the heart of the switch. Holds the on-chain incremental
-  Poseidon2 Merkle tree, tracks per-identity intervals / last check-in / missed count,
-  enforces epoch nullifiers, and cross-calls the verifier on every check-in.
+  Poseidon2 Merkle tree (leaves individually readable via `get_leaf` / `get_leaves` so
+  provers can reconstruct witnesses), tracks per-identity intervals / last check-in /
+  missed count, enforces epoch nullifiers, keeps a known-roots history, and cross-calls
+  the verifier on every check-in.
 - **ObolVerifier** — a thin Soroban wrapper over a vendored UltraHonk verifier crate.
   Stores the circuit's verification key immutably and checks proofs.
 - **VaultController** — escrow. Holds funds against a sealed `vault_commitment`,
@@ -126,11 +137,13 @@ Soroban contract.
 
 ### 2. Check-in (proof of life)
 
-- Each interval, the owner computes the current `epoch = floor(ledger_timestamp / interval)`,
-  builds the Merkle witness for their leaf, and generates an UltraHonk proof.
+- Each interval, the owner's browser computes the current
+  `epoch = floor(ledger_timestamp / interval)`, fetches the registered leaves from the
+  registry, rebuilds the Merkle tree locally (byte-identical Poseidon2), derives the
+  witness for their own leaf, and generates an UltraHonk proof with bb.js.
 - `checkin(public_inputs, proof)` submits it. The registry checks: the identity is
-  registered, the proof's `root` matches the current tree root, the `epoch` is the
-  current window, the `nullifier_hash` has not been used, and finally the proof verifies
+  registered, the proof's `root` is a known tree root, the `epoch` is the current
+  window, the `nullifier_hash` has not been used, and finally the proof verifies
   on the ObolVerifier. On success, the missed counter resets to zero.
 - The submitting address can be anyone (or a relayer) — the check-in carries no wallet
   signature from the owner, so it never links the owner's real wallet.
@@ -166,7 +179,7 @@ in **Noir**, compiled with **Noir 1.0.0-beta.9**.
 
 | Input                 | Meaning                                                             |
 |-----------------------|---------------------------------------------------------------------|
-| `root`                | Current Merkle root of the anonymity set (must match on-chain).     |
+| `root`                | Merkle root of the anonymity set (must be a known on-chain root).   |
 | `identity_commitment` | The owner's public pseudonym / Merkle leaf. Binds the reset to one owner. |
 | `nullifier_hash`      | `Poseidon2(nullifier, epoch)` — one-time-per-window liveness token. |
 | `epoch`               | `floor(ledger_timestamp / interval)` — the current time window.     |
@@ -183,19 +196,44 @@ in **Noir**, compiled with **Noir 1.0.0-beta.9**.
 3. `nullifier_hash == Poseidon2(nullifier, epoch)` — epoch-bound anti-replay.
 
 All hashing uses the noir-lang `poseidon` library (BN254 Poseidon2), which is
-**byte-for-byte identical** to the on-chain `soroban-poseidon` hashing used to build the
-Merkle tree. That alignment is precisely why an off-chain proof binds to the on-chain
-root. (See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the three-way Poseidon2
-alignment story.)
+**byte-for-byte identical** across four layers: bb.js in the browser ↔ the Noir circuit
+↔ Rust `soroban-poseidon` ↔ the on-chain tree. That alignment is precisely why an
+off-chain proof binds to the on-chain root. (See
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the alignment story.)
 
 **Proof system:** UltraHonk via **Barretenberg (bb) 0.87.0**, generated with
 `--oracle_hash keccak`. Proof size is **14,592 bytes**.
 
 ---
 
+## Frontend
+
+[`frontend/`](frontend/) is a Next.js (App Router) app, deployed at
+**https://obol-two.vercel.app**:
+
+- **Browser-side proving.** The full UltraHonk pipeline — witness computation and proof
+  generation — runs in the page via `@noir-lang/noir_js` + `@aztec/bb.js`. Nothing
+  secret ever leaves the tab. See [`frontend/src/lib/prover.ts`](frontend/src/lib/prover.ts).
+- **Multi-wallet** via Stellar Wallets Kit (Freighter, xBull, Albedo, Rabet, Hana) — see
+  [`frontend/src/lib/wallet.tsx`](frontend/src/lib/wallet.tsx).
+- **Pages:** landing → `setup` (4-step wizard: identity → interval → sealed beneficiary →
+  deposit) → `dashboard` (status, countdown, keeper reporting) → `checkin` (generate +
+  submit the proof of life) → `claim` (heir reveals salt, claims).
+- The owner's identity and vault metadata live in `localStorage` (with a downloadable
+  backup); the salt is pre-filled on the claim page as a demo convenience when the same
+  browser created the vault.
+
+```bash
+cd frontend
+npm install
+npm run dev     # http://localhost:3000 — defaults point at the live testnet contracts
+```
+
+---
+
 ## Deployed contracts (Stellar testnet)
 
-Everything below is **live on Stellar testnet** and deployed from
+Everything below is **live on Stellar testnet** and recorded in
 [`deployments/testnet.json`](deployments/testnet.json).
 
 - **Network:** `testnet` — `Test SDF Network ; September 2015`
@@ -204,11 +242,11 @@ Everything below is **live on Stellar testnet** and deployed from
 
 | Contract          | Address (C-ID)                                             | Explorer |
 |-------------------|-----------------------------------------------------------|----------|
-| LivenessRegistry  | `CDQKTII66Z2BOMXOUU3WHGACAEM4XIUPLFORG5MZEKCVQSB6FMTSXGME` | [view](https://stellar.expert/explorer/testnet/contract/CDQKTII66Z2BOMXOUU3WHGACAEM4XIUPLFORG5MZEKCVQSB6FMTSXGME) |
-| VaultController   | `CDQL4QEZN7QWMC3YTPNGI52IAVSXGNWAMCJD7UGHNFOOKONAI6T5WKOS` | [view](https://stellar.expert/explorer/testnet/contract/CDQL4QEZN7QWMC3YTPNGI52IAVSXGNWAMCJD7UGHNFOOKONAI6T5WKOS) |
-| ObolVerifier      | `CBE4ACZCQTXTPGJVNDAEKSYZLUVJMUMUVMZCMDXSIE3EB67RTSRSKFQ6` | [view](https://stellar.expert/explorer/testnet/contract/CBE4ACZCQTXTPGJVNDAEKSYZLUVJMUMUVMZCMDXSIE3EB67RTSRSKFQ6) |
-| KeeperRegistry    | `CCKEYJKGNNC475ELXZ56BT2A6WXWT3G32YG2KFDP2BLELHQ437F2LXMA` | [view](https://stellar.expert/explorer/testnet/contract/CCKEYJKGNNC475ELXZ56BT2A6WXWT3G32YG2KFDP2BLELHQ437F2LXMA) |
-| MockToken (SEP-41)| `CDEARWWPX4653XD27ZVDQ7UBNNSH36RSUGVNOR3GVYTMXUD5GWCOKCCQ` | [view](https://stellar.expert/explorer/testnet/contract/CDEARWWPX4653XD27ZVDQ7UBNNSH36RSUGVNOR3GVYTMXUD5GWCOKCCQ) |
+| LivenessRegistry  | `CD2NYC2U3OKZ5Z355H3UXE3MVUWCROWRFEH4UQ6NGIPCYYGDS3VDWSLC` | [view](https://testnet.stellarchain.io/contracts/CD2NYC2U3OKZ5Z355H3UXE3MVUWCROWRFEH4UQ6NGIPCYYGDS3VDWSLC) |
+| VaultController   | `CAZST5N37ZYKNXYCUIQ4AKV553TSXTQWPURDRTAX3OFRQMNBEP3PI4IE` | [view](https://testnet.stellarchain.io/contracts/CAZST5N37ZYKNXYCUIQ4AKV553TSXTQWPURDRTAX3OFRQMNBEP3PI4IE) |
+| ObolVerifier      | `CBE4ACZCQTXTPGJVNDAEKSYZLUVJMUMUVMZCMDXSIE3EB67RTSRSKFQ6` | [view](https://testnet.stellarchain.io/contracts/CBE4ACZCQTXTPGJVNDAEKSYZLUVJMUMUVMZCMDXSIE3EB67RTSRSKFQ6) |
+| KeeperRegistry    | `CCKEYJKGNNC475ELXZ56BT2A6WXWT3G32YG2KFDP2BLELHQ437F2LXMA` | [view](https://testnet.stellarchain.io/contracts/CCKEYJKGNNC475ELXZ56BT2A6WXWT3G32YG2KFDP2BLELHQ437F2LXMA) |
+| MockToken (SEP-41)| `CDEARWWPX4653XD27ZVDQ7UBNNSH36RSUGVNOR3GVYTMXUD5GWCOKCCQ` | [view](https://testnet.stellarchain.io/contracts/CDEARWWPX4653XD27ZVDQ7UBNNSH36RSUGVNOR3GVYTMXUD5GWCOKCCQ) |
 
 ### Live proof of life, verified on-chain
 
@@ -216,11 +254,15 @@ A **real UltraHonk proof of life was verified on live testnet** in transaction:
 
 **`2f4083e8b52c05fb3b6d6e278fbdabe47749d7fa16952a40b27cc7612668ae72`**
 
-→ [view on stellar.expert](https://stellar.expert/explorer/testnet/tx/2f4083e8b52c05fb3b6d6e278fbdabe47749d7fa16952a40b27cc7612668ae72)
+→ [view on stellarchain](https://testnet.stellarchain.io/transactions/2f4083e8b52c05fb3b6d6e278fbdabe47749d7fa16952a40b27cc7612668ae72)
 
-Both a **bb-CLI-generated proof** and a **bb.js browser-generated proof** verify against
-the deployed ObolVerifier — meaning a proof produced entirely in the browser is accepted
-on-chain.
+(That transaction ran against the first-generation registry; the current registry —
+which additionally stores leaves for client-side witness reconstruction — accepts the
+same proofs and is exercised end-to-end by
+[`frontend/scripts/e2e-checkin.mjs`](frontend/scripts/e2e-checkin.mjs).)
+
+Both **bb-CLI-generated proofs** and **bb.js browser-generated proofs** verify against
+the deployed ObolVerifier — a proof produced entirely in the browser is accepted on-chain.
 
 ---
 
@@ -243,8 +285,10 @@ obol/
 │   └── vendor/              vendored ultrahonk_soroban_verifier crate (MIT)
 ├── deployments/
 │   └── testnet.json         live testnet addresses + proof tx
-├── frontend/                Next.js + Freighter UI (WIP — see below)
-└── scripts/                 deploy / prove helpers (WIP — see below)
+├── frontend/                Next.js app: wallet kit, browser proving, full lifecycle UI
+│   └── scripts/
+│       └── e2e-checkin.mjs  headless E2E: register -> multi-leaf witness -> on-chain checkin
+└── scripts/                 build / test / deploy / demo helpers
 ```
 
 ---
@@ -295,7 +339,7 @@ bb write_vk \
 ```
 
 This produces `target/proof`, `target/public_inputs`, and `target/vk`, which the
-integration test embeds.
+integration test embeds. (`scripts/build_circuit.sh` wraps all of the above.)
 
 ### 2. Build the contracts
 
@@ -319,23 +363,17 @@ on-chain tree hashing are byte-identical. The test then drives the full lifecycl
 register → check-in → replay rejection → three missed reports → activation → claim, and
 checks that a wrong recipient cannot claim.
 
----
-
-## Frontend
-
-A **Next.js + Freighter** frontend is planned to give owners a UI for registering,
-generating browser-side proofs of life (via bb.js), and monitoring their switch.
+### 4. Headless end-to-end against live testnet
 
 ```bash
 cd frontend
-npm install
-npm run dev
+node scripts/e2e-checkin.mjs
 ```
 
-> **Honest status:** the `frontend/` directory is currently a placeholder — the browser
-> proving path itself is proven (a bb.js browser proof verifies on-chain, see the live
-> tx above), but the UI is not yet committed to this repo. Treat the commands above as
-> the intended entry point rather than a finished app.
+Registers two fresh identities on the live registry, rebuilds the Merkle tree from the
+on-chain leaves, generates a proof for the **second** leaf (a non-trivial witness path),
+and submits `checkin` — asserting the browser proving pipeline works for any member of a
+populated tree, not just the first. Requires a funded `obol-deployer` Stellar CLI key.
 
 ---
 
@@ -356,26 +394,27 @@ npm run dev
 
 ---
 
-## What's mocked / work-in-progress
+## What's mocked / simplified
 
 In the spirit of honest hackathon work, here is exactly what is real and what isn't:
 
 **Real and working:**
 - All five Soroban contracts, deployed and live on testnet.
-- A real UltraHonk proof of life verified on-chain (both CLI- and browser-generated).
+- Real UltraHonk proofs of life verified on-chain — CLI-generated, browser-generated,
+  and via the headless E2E script against a populated (multi-leaf) tree.
 - The full register → check-in → activate → claim lifecycle, exercised end-to-end in the
-  integration test with a real proof and an assertion that the on-chain Merkle root
-  equals the circuit root.
+  integration test with a real proof, and on live testnet through the UI with real
+  wallet signatures.
+- Client-side Merkle witness reconstruction from on-chain leaves — check-ins work for
+  any member at any leaf index.
 - Epoch-nullifier anti-replay, and recipient-bound (front-run-proof) claims.
 
-**Mocked / simplified / WIP:**
+**Mocked / simplified:**
 - **MockToken** stands in for a real stablecoin (mint-able, SEP-41, demo only).
 - **Demo timing** (60s interval / 60s grace) is unrealistically short by design.
-- **`input_gen` produces the empty-tree witness** for a single member at leaf index 0
-  (the demo case) — a production prover would build the witness for the member's actual
-  leaf index in a populated tree.
-- **The `frontend/` and `scripts/` directories are placeholders** in this repo; the
-  commands documented for them describe the intended workflow.
+- **`input_gen` produces the single-member fixture** used by the contract integration
+  test (leaf index 0 in a fresh tree). The frontend prover does the general case —
+  fetching leaves and building the witness for any index.
 - **Keeper watching is manual/permissionless** — anyone can call `report_missed`; the
   KeeperRegistry provides staking and an `is_active_keeper` gate, but an automated keeper
   bot is not included.

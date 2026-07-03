@@ -1,5 +1,24 @@
 "use client";
 
+/**
+ * Vault creation wizard — the owner-side entry point to the protocol.
+ *
+ * Four steps: (1) generate {nullifier, secret} in-browser (prover.ts) and force
+ * an identity backup download before continuing — it is the owner's ONLY key;
+ * (2) pick the check-in interval; (3) enter the beneficiary's Stellar address;
+ * (4) deposit MockToken. The final deploy generates a random 32-byte salt,
+ * derives vault_commitment via the VaultController's derive_commitment view
+ * (so client and contract can never disagree on the hash), then submits two
+ * wallet-signed transactions: LivenessRegistry.register(identity_commitment,
+ * vault_commitment, interval) and VaultController.deposit.
+ *
+ * Identity and vault metadata (commitment, salt, beneficiary, interval) are
+ * persisted to localStorage via lib/identity.ts; the success screen surfaces
+ * the vault commitment + salt because the beneficiary needs the salt (with
+ * their own address) to claim later. Nothing secret ever goes on-chain: the
+ * beneficiary is hidden behind the commitment until claim.
+ */
+
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {

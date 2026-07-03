@@ -3,7 +3,6 @@
 /contracts/tools/input_gen/target
 **/target
 Cargo.lock.bak
-/scripts
 # Circuit build output (artifacts are regenerated; the frontend copies the ACIR)
 /circuits/liveness/target
 /video

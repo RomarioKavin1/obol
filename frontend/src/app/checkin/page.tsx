@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * /checkin route: page shell (heading + copy) around the <CheckIn> component,
+ * which owns the proof-of-life flow — in-browser UltraHonk proof generation and
+ * submission to LivenessRegistry.checkin.
+ */
+
 import { CheckIn } from "@/components/CheckIn";
 
 export default function CheckInPage() {

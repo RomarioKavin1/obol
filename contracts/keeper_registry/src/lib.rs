@@ -6,6 +6,11 @@
 //! incentives and deter spam, keepers stake tokens here. `is_active_keeper`
 //! gates who is considered a bonded keeper (front-ends / off-chain agents check
 //! this before acting).
+//!
+//! Scope note: the stake is a bond, not a slashable security deposit — there is
+//! no slashing logic, and keepers may `unstake` at any time (dropping below
+//! `min_stake` simply deactivates them). `report_missed` itself is
+//! permissionless on the LivenessRegistry; this contract only signals bonding.
 
 use soroban_sdk::{
     contract, contracterror, contractevent, contractimpl, contracttype, token, Address, Env,

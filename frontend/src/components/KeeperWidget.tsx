@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * Keeper staking widget (dashboard). Keepers are the third party that makes the
+ * dead man's switch trustless: they stake MockToken for the right to call
+ * report_missed on owners who stop checking in, which is what eventually
+ * activates a vault.
+ *
+ * Reads min_stake plus the connected wallet's stake / active flag from the
+ * KeeperRegistry (view simulations), and submits wallet-signed keeperStake /
+ * keeperUnstake transactions. The report_missed action itself lives on the
+ * dashboard page, not here — this widget only manages stake.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Shield } from "lucide-react";
 import { toast } from "sonner";

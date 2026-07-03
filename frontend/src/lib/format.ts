@@ -1,4 +1,11 @@
-/** Small formatting / byte helpers shared across the app. */
+/**
+ * Small formatting / byte helpers shared across the app.
+ *
+ * The byte helpers encode values as 32-byte big-endian arrays — the exact
+ * layout Soroban `BytesN<32>` args and the circuit's BN254 field elements use —
+ * so hex/bigint round-trips stay aligned with what the contracts hash and parse.
+ * Token amount helpers assume Stellar's 7-decimal convention by default.
+ */
 
 /** Shorten a Stellar address for display: GABC…WXYZ */
 export function shortenAddress(addr: string, chars = 4): string {

@@ -1,3 +1,14 @@
+/**
+ * Root layout (server component). Loads fonts, global CSS, and SEO metadata,
+ * then wraps every page in <Providers> (client boundary that mounts the
+ * WalletProvider from lib/wallet.tsx), the fixed <Navbar>, and the sonner
+ * <Toaster> used for all tx progress/success/error toasts.
+ *
+ * The app is dark-only: <html class="dark"> is hardcoded, and
+ * suppressHydrationWarning absorbs the <html> attribute mutation Stellar
+ * Wallets Kit performs when it initialises.
+ */
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Archivo } from "next/font/google";
 import "./globals.css";

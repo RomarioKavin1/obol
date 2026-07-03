@@ -1,5 +1,23 @@
 "use client";
 
+/**
+ * Proof-of-life check-in — the recurring owner action that keeps the vault
+ * locked.
+ *
+ * Loads the identity from localStorage (lib/identity.ts), computes the current
+ * epoch from LEDGER time (getCurrentEpoch — wall clocks can disagree with the
+ * chain and cause EpochMismatch), generates the UltraHonk proof in-browser via
+ * prover.ts, then submits it with LivenessRegistry.checkin(public_inputs,
+ * proof). The connected wallet only signs/pays the transaction; the proof
+ * itself never reveals which identity commitment belongs to which wallet.
+ *
+ * Status cards (last check-in, missed/max, epoch deadline) come from registry
+ * view reads; the on-chain per-identity interval overrides the locally stored
+ * one when present. Contract error #10 (EpochMismatch) is special-cased: on the
+ * 60s demo interval the epoch can roll over between proof generation and
+ * wallet approval, so the proof's epoch no longer matches the ledger's.
+ */
+
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";

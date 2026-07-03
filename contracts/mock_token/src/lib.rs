@@ -3,7 +3,11 @@
 //!
 //! A minimal, mint-able fungible token implementing the Soroban token
 //! (SEP-41) interface, used to make demos and tests self-contained (e.g. a mock
-//! USDC-style stablecoin held in inheritance vaults). Not for production use.
+//! USDC-style stablecoin held in inheritance vaults and staked by keepers).
+//!
+//! Deliberately insecure by design: besides the admin-only `mint`, there is a
+//! permissionless `faucet` that mints a fixed batch to anyone. Not for
+//! production use.
 
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, token, Address, Env, MuxedAddress, String,

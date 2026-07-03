@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * /setup route: page shell (heading + copy) around the <VaultSetup> wizard,
+ * which owns all state and contract interaction for creating a vault —
+ * identity generation, interval choice, sealed beneficiary, and deposit.
+ */
+
 import { VaultSetup } from "@/components/VaultSetup";
 
 export default function SetupPage() {

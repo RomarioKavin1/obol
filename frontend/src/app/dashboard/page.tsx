@@ -1,5 +1,22 @@
 "use client";
 
+/**
+ * Owner dashboard: the vault-status view of the dead man's switch.
+ *
+ * Loads the identity from localStorage (lib/identity.ts) — no identity means no
+ * vault on this device, so it renders a redirect card to /setup. Otherwise it
+ * reads LivenessRegistry views (root, member count, last_checkin, missed count,
+ * max_missed, per-identity interval) plus VaultController.is_activated for the
+ * locally-stored vault commitment, all as fee-less simulations.
+ *
+ * The epoch deadline is (current_epoch + 1) * interval using ledger time
+ * (getCurrentEpoch), re-rendered every second via a tick counter. When the
+ * deadline passes, an overdue banner exposes the keeper path: report_missed on
+ * the LivenessRegistry against this identity's commitment — the same call any
+ * third-party keeper would make; after max_missed reports the vault activates.
+ * Also hosts FaucetButton and KeeperWidget for the demo keeper economy.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";

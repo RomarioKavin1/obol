@@ -1,5 +1,23 @@
 "use client";
 
+/**
+ * Heir-side claim flow: turn a secret salt into the vault's funds after the
+ * owner has gone silent.
+ *
+ * The recipient is pinned to the connected wallet (read-only field): the vault
+ * commitment is derive_commitment(recipient, salt) on the VaultController, so a
+ * lookup only succeeds when the connected address IS the sealed beneficiary —
+ * which is also why a leaked salt cannot be front-run by another wallet. As a
+ * demo convenience the salt pre-fills from this browser's stored vault
+ * (lib/identity.ts) if the owner created it here.
+ *
+ * State machine: search -> checking (vaultExists / isClaimed / isActivated /
+ * getVaultAmount view reads) -> not_found | not_activated | already_claimed |
+ * activated -> claiming (wallet-signed VaultController.claim(commitment, salt,
+ * recipient)) -> claimed. A failed claim falls back to "activated" so the user
+ * can retry without re-doing the lookup.
+ */
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Inbox, Search, CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react";

@@ -1,3 +1,6 @@
+# Obol "liveness" circuit — the ZK proof-of-life. Proves Poseidon2 Merkle
+# membership (depth 20) of identity_commitment plus an epoch-bound nullifier;
+# proved with Barretenberg UltraHonk (keccak oracle), verified on-chain by ObolVerifier.
 [package]
 name = "obol_liveness"
 type = "bin"

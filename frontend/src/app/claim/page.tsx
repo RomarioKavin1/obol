@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * /claim route: page shell (heading + copy) around the <BeneficiaryClaim>
+ * component, which owns the heir-side flow — reveal the salt, look up the
+ * sealed vault, and claim from VaultController once it has activated.
+ */
+
 import { BeneficiaryClaim } from "@/components/BeneficiaryClaim";
 
 export default function ClaimPage() {
