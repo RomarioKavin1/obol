@@ -76,6 +76,7 @@ pub enum DataKey {
     NextIndex,
     MaxMissed,
     Frontier(u32),
+    Leaf(u32),
     KnownRoot(BytesN<32>),
     Committed(BytesN<32>),
     Nullifier(BytesN<32>),
@@ -351,6 +352,25 @@ impl LivenessRegistry {
     pub fn is_nullifier_used(env: Env, nullifier_hash: BytesN<32>) -> bool {
         env.storage().instance().has(&DataKey::Nullifier(nullifier_hash))
     }
+    pub fn get_leaf(env: Env, index: u32) -> Option<BytesN<32>> {
+        env.storage().instance().get(&DataKey::Leaf(index))
+    }
+    /// Leaves `[start, end)`, clamped to the member count. Provers fetch these to
+    /// rebuild the tree client-side and derive a Merkle witness for any member.
+    pub fn get_leaves(env: Env, start: u32, end: u32) -> soroban_sdk::Vec<BytesN<32>> {
+        let s = env.storage().instance();
+        let count: u32 = s.get(&DataKey::NextIndex).unwrap_or(0);
+        let hi = end.min(count);
+        let mut out = soroban_sdk::Vec::new(&env);
+        let mut i = start;
+        while i < hi {
+            if let Some(leaf) = s.get(&DataKey::Leaf(i)) {
+                out.push_back(leaf);
+            }
+            i += 1;
+        }
+        out
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -397,6 +417,7 @@ fn insert_leaf(env: &Env, leaf: &BytesN<32>) -> Result<u32, Error> {
         return Err(Error::TreeFull);
     }
     let idx = next_index;
+    s.set(&DataKey::Leaf(idx), leaf);
     let zs = zeroes(env);
     let mut cur = leaf.clone();
     let mut i: u32 = 0;

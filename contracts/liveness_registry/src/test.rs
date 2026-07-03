@@ -29,6 +29,12 @@ fn slice32(env: &Env, src: &[u8], start: usize) -> BytesN<32> {
     BytesN::from_array(env, &a)
 }
 
+/// Epoch baked into the proof fixture: big-endian u64 in the last 8 bytes of
+/// `[root | identity_commitment | nullifier_hash | epoch]`.
+fn fixture_epoch() -> u64 {
+    u64::from_be_bytes(PUBLIC_INPUTS[120..128].try_into().unwrap())
+}
+
 struct World<'a> {
     env: Env,
     registry: LivenessRegistryClient<'a>,
@@ -40,7 +46,9 @@ struct World<'a> {
 fn setup<'a>() -> World<'a> {
     let env = Env::default();
     env.mock_all_auths();
-    env.ledger().set_timestamp(60); // epoch = 60 / 60 = 1 (matches the proof)
+    // Start the ledger at the proof fixture's own epoch (the fixture is
+    // regenerated against the live clock), so `checkin` sees a matching epoch.
+    env.ledger().set_timestamp(fixture_epoch() * 60);
 
     let owner = Address::generate(&env);
     let fee_collector = Address::generate(&env);
@@ -126,7 +134,7 @@ fn full_lifecycle_register_checkin_activate_claim() {
 
     // Dead-man's-switch: owner goes silent. Advance well past the grace window
     // and report three consecutive missed intervals.
-    env.ledger().set_timestamp(1_000_000);
+    env.ledger().set_timestamp(fixture_epoch() * 60 + 1_000_000);
     let keeper = Address::generate(env);
     assert_eq!(w.registry.report_missed(&keeper, &identity_commitment), 1);
     assert_eq!(w.registry.report_missed(&keeper, &identity_commitment), 2);
@@ -161,7 +169,7 @@ fn wrong_beneficiary_cannot_claim() {
         .deposit(&depositor, &vault_commitment, &blob, &w.token.address, &500i128);
 
     // Force activation directly through the registry path.
-    env.ledger().set_timestamp(1_000_000);
+    env.ledger().set_timestamp(fixture_epoch() * 60 + 1_000_000);
     let keeper = Address::generate(env);
     w.registry.report_missed(&keeper, &identity_commitment);
     w.registry.report_missed(&keeper, &identity_commitment);

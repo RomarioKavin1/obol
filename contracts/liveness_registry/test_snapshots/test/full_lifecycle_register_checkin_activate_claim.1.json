@@ -228,7 +228,7 @@
   "ledger": {
     "protocol_version": 26,
     "sequence_number": 0,
-    "timestamp": 1000000,
+    "timestamp": 30714880,
     "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
     "base_reserve": 0,
     "min_persistent_entry_ttl": 4096,
@@ -699,7 +699,22 @@
                         ]
                       },
                       "val": {
-                        "u64": "240"
+                        "u64": "29715060"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Leaf"
+                          },
+                          {
+                            "u32": 0
+                          }
+                        ]
+                      },
+                      "val": {
+                        "bytes": "104e0bd6005f49256782d7cd8a50b8f2bb58c329dc2bdd6b34c3092dc6e4ad20"
                       }
                     },
                     {
@@ -748,7 +763,7 @@
                             "symbol": "Nullifier"
                           },
                           {
-                            "bytes": "18f12ffed4a34bd64e8baf7e4a158a54306bf6e091a4de5980c8e3517b5e0d36"
+                            "bytes": "09d5b3c7389cb0eb7129fd51e00fad31f54dc6fd0cea2a000c062429ac8902aa"
                           }
                         ]
                       },

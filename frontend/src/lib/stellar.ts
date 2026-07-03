@@ -257,6 +257,29 @@ export async function getMemberCount(): Promise<number> {
   return Number((await readContract(CONTRACTS.livenessRegistry, "get_member_count")) ?? 0);
 }
 
+/**
+ * Fetch every leaf of the on-chain anonymity set, as bigints. The prover uses
+ * these to rebuild the Merkle tree client-side and derive a witness for any
+ * member, so check-ins keep working as the tree grows.
+ */
+export async function getAllLeaves(): Promise<bigint[]> {
+  const count = await getMemberCount();
+  const leaves: bigint[] = [];
+  const CHUNK = 50;
+  for (let start = 0; start < count; start += CHUNK) {
+    const chunk = (await readContract(CONTRACTS.livenessRegistry, "get_leaves", [
+      scvU32(start),
+      scvU32(Math.min(start + CHUNK, count)),
+    ])) as Uint8Array[] | null;
+    for (const b of chunk ?? []) {
+      let n = 0n;
+      for (const byte of b) n = (n << 8n) | BigInt(byte);
+      leaves.push(n);
+    }
+  }
+  return leaves;
+}
+
 export async function isRegistered(identityCommitment: Uint8Array): Promise<boolean> {
   return Boolean(
     await readContract(CONTRACTS.livenessRegistry, "is_registered", [

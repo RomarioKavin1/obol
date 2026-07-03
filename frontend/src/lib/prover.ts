@@ -8,9 +8,9 @@
  *
  *   - Poseidon2 over BN254 (via Barretenberg) for all hashes.
  *   - identity_commitment = Poseidon2(nullifier, secret)
- *   - empty-tree Merkle witness, single member at index 0 (the on-chain registry
- *     recomputes the identical root for a single owner). For a multi-owner tree
- *     you would track the frontier; this demo uses the index-0 witness.
+ *   - Merkle witness built from the REAL on-chain leaves (fetched from the
+ *     registry), so proofs stay valid no matter how many owners registered
+ *     before or after this identity.
  *   - nullifier_hash = Poseidon2(nullifier, epoch)
  *   - UltraHonk proof with keccak oracle hash -> exactly 14592 proof bytes.
  *   - public_inputs = 32-byte big-endian concat of [root, identity_commitment,
@@ -159,13 +159,42 @@ export async function generateLivenessProof(
   // identity commitment
   const identity_commitment = await h2(nullifier, secret);
 
-  // empty-tree Merkle witness (single member at index 0 — matches how the
-  // on-chain registry computes the root for a single owner).
+  // Merkle witness against the REAL on-chain tree: fetch every registered leaf,
+  // locate our commitment, and hash the path to the root level by level.
+  onProgress?.("computing_witness");
+  const { getAllLeaves } = await import("./stellar");
+  const leaves = await getAllLeaves();
+  const leafIndex = leaves.findIndex((l) => l === identity_commitment);
+  if (leafIndex === -1) {
+    throw new Error(
+      "This identity is not registered in the on-chain anonymity set. " +
+        "Set up your vault first (or the registry was redeployed)."
+    );
+  }
+
   const zeroes: bigint[] = [0n];
   for (let i = 0; i < TREE_DEPTH; i++) zeroes.push(await h2(zeroes[i], zeroes[i]));
-  let cur = identity_commitment;
-  for (let i = 0; i < TREE_DEPTH; i++) cur = await h2(cur, zeroes[i]);
-  const root = cur;
+
+  const path_siblings: bigint[] = [];
+  const path_bits: number[] = [];
+  let level = leaves.slice();
+  let idx = leafIndex;
+  for (let d = 0; d < TREE_DEPTH; d++) {
+    const bit = idx & 1;
+    const siblingIdx = bit === 0 ? idx + 1 : idx - 1;
+    path_siblings.push(siblingIdx < level.length ? level[siblingIdx] : zeroes[d]);
+    path_bits.push(bit);
+    const next: bigint[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const left = level[i];
+      const right = i + 1 < level.length ? level[i + 1] : zeroes[d];
+      next.push(await h2(left, right));
+    }
+    if (next.length === 0) next.push(await h2(zeroes[d], zeroes[d]));
+    level = next;
+    idx >>= 1;
+  }
+  const root = level[0];
 
   const nullifier_hash = await h2(nullifier, epoch);
 
@@ -176,8 +205,8 @@ export async function generateLivenessProof(
     epoch: hex(epoch),
     nullifier: hex(nullifier),
     secret: hex(secret),
-    path_siblings: zeroes.slice(0, TREE_DEPTH).map(hex),
-    path_bits: Array(TREE_DEPTH).fill("0x0"),
+    path_siblings: path_siblings.map(hex),
+    path_bits: path_bits.map((b) => (b === 0 ? "0x0" : "0x1")),
   };
 
   const circuit = await loadCircuit();
