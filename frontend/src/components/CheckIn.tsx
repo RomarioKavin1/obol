@@ -37,22 +37,36 @@ import {
   getMaxMissed,
   getInterval,
   getCurrentEpoch,
+  getLedgerTime,
 } from "@/lib/stellar";
 import { bigintToBytes32, formatTimeRemaining } from "@/lib/format";
 import { txUrl } from "@/lib/config";
 
 const DEFAULT_INTERVAL = 60;
 
-type ProofStep = "idle" | ProofProgress | "submitting" | "done" | "error";
+type ProofStep =
+  | "idle"
+  | "waiting_window"
+  | ProofProgress
+  | "submitting"
+  | "done"
+  | "error";
 
 const STEP_LABELS: Record<ProofStep, string> = {
   idle: "Ready",
+  waiting_window: "Waiting for a fresh check-in window...",
   computing_witness: "Computing witness...",
   generating_proof: "Generating UltraHonk proof (a few seconds)...",
   submitting: "Submitting to Stellar...",
   done: "Check-in complete!",
   error: "Error",
 };
+
+// If less than this remains in the current window when a check-in starts, wait
+// for the next window instead: the proof must be generated AND signed AND
+// included on-chain before the epoch rolls over, or the contract rejects it
+// with EpochMismatch. Only relevant for short demo intervals.
+const MIN_WINDOW_HEADROOM_SECONDS = 30;
 
 export function CheckIn() {
   const { address } = useWallet();
@@ -121,6 +135,17 @@ export function CheckIn() {
 
     try {
       // Use the ledger's notion of time so epoch matches the on-chain check.
+      // On short (demo) intervals, don't start against a nearly-expired window
+      // — proving plus the wallet prompt would outlive it. Wait for the next
+      // window so the full interval is available for prove + sign + include.
+      if (interval <= 300) {
+        const ledgerTime = await getLedgerTime();
+        const secondsLeft = interval - (ledgerTime % interval);
+        if (secondsLeft < MIN_WINDOW_HEADROOM_SECONDS) {
+          setProofStep("waiting_window");
+          await new Promise((r) => setTimeout(r, (secondsLeft + 2) * 1000));
+        }
+      }
       const epoch = await getCurrentEpoch(interval);
 
       const proof = await generateLivenessProof(id, epoch, (step) =>
@@ -136,19 +161,35 @@ export function CheckIn() {
     } catch (err: unknown) {
       setProofStep("error");
       const raw = err instanceof Error ? err.message : "Unknown error";
-      // Contract error #10 = EpochMismatch: the epoch rolled over between proof
-      // generation and submission (easy to hit on the 60s demo interval).
-      const msg = /#10\b|epochmismatch|epoch/i.test(raw)
-        ? "The check-in window rolled over before the proof was submitted. Approve the wallet prompt quickly, or use a longer interval, then try again."
-        : raw;
+      // Map the registry's contract errors (surfaced by stellar.ts for both
+      // simulation and execution failures) to actionable messages.
+      let msg = raw;
+      if (/#10\b|epochmismatch|epoch/i.test(raw)) {
+        // EpochMismatch: the window rolled over between proving and inclusion.
+        msg =
+          "The check-in window rolled over before the transaction landed on-chain. Approve the wallet prompt quickly and try again — the page now waits for a fresh window automatically.";
+      } else if (/#7\b/.test(raw)) {
+        // NullifierUsed: one liveness token per window.
+        msg = "You already checked in during this window. Wait for the next one.";
+      } else if (/#6\b/.test(raw)) {
+        // RootMismatch: tree changed between witness fetch and submission.
+        msg =
+          "The anonymity set changed while your proof was being generated (someone registered). Just try again.";
+      } else if (/#2\b/.test(raw)) {
+        // NotRegistered.
+        msg = "This identity is not registered on-chain. Set up your vault first.";
+      }
       toast.error(`Check-in failed: ${msg}`);
       console.error(err);
     }
   };
 
-  const isProving = ["computing_witness", "generating_proof", "submitting"].includes(
-    proofStep
-  );
+  const isProving = [
+    "waiting_window",
+    "computing_witness",
+    "generating_proof",
+    "submitting",
+  ].includes(proofStep);
 
   const deadlineMs = deadline ? deadline * 1000 : null;
   const remainingMs = deadlineMs ? deadlineMs - Date.now() : null;

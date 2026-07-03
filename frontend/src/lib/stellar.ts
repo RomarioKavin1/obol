@@ -152,7 +152,13 @@ export async function invokeContract(
   }
 
   if (getResp.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
-    throw new Error(`Transaction ${hash} failed: ${getResp.status}`);
+    // A tx can pass simulation yet fail at execution (e.g. the check-in epoch
+    // rolls over while the wallet prompt is open). Surface the actual contract
+    // error code so callers can give a targeted message instead of "FAILED".
+    const contractError = await fetchContractError(hash);
+    throw new Error(
+      `Transaction ${hash} failed: ${contractError ?? getResp.status}`
+    );
   }
 
   let returnValue: unknown = null;
@@ -164,6 +170,42 @@ export async function invokeContract(
     }
   }
   return { hash, returnValue };
+}
+
+/**
+ * Best-effort: pull a failed transaction's diagnostic events from the RPC and
+ * extract the first contract error, formatted like the simulation errors
+ * ("Error(Contract, #10)") so downstream error matching works for both paths.
+ */
+async function fetchContractError(hash: string): Promise<string | null> {
+  try {
+    const res = await fetch(RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTransaction",
+        params: { hash },
+      }),
+    });
+    const json = (await res.json()) as {
+      result?: { diagnosticEventsXdr?: string[] };
+    };
+    for (const b64 of json.result?.diagnosticEventsXdr ?? []) {
+      const de = xdr.DiagnosticEvent.fromXDR(b64, "base64");
+      for (const topic of de.event().body().v0().topics()) {
+        if (topic.switch() !== xdr.ScValType.scvError()) continue;
+        const err = topic.error();
+        if (err.switch() === xdr.ScErrorType.sceContract()) {
+          return `Error(Contract, #${err.contractCode()})`;
+        }
+      }
+    }
+  } catch {
+    /* diagnostics are a nicety; fall back to the bare status */
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
