@@ -9,11 +9,14 @@
  * max_missed, per-identity interval) plus VaultController.is_activated for the
  * locally-stored vault commitment, all as fee-less simulations.
  *
- * The epoch deadline is (current_epoch + 1) * interval using ledger time
- * (getCurrentEpoch), re-rendered every second via a tick counter. When the
- * deadline passes, an overdue banner exposes the keeper path: report_missed on
- * the LivenessRegistry against this identity's commitment — the same call any
- * third-party keeper would make; after max_missed reports the vault activates.
+ * The deadline mirrors the contract's report_missed rule: the owner must check
+ * in before last_checkin + interval, and keepers may report once
+ * last_checkin + interval + grace has passed. The countdown re-renders every
+ * second via a tick counter. When the grace period elapses, an overdue banner
+ * exposes the keeper path: report_missed on the LivenessRegistry against this
+ * identity's commitment — the same call any third-party keeper would make;
+ * after max_missed reports the vault activates. Note report_missed advances
+ * last_checkin by one interval, so the deadline moves after each report.
  * Also hosts FaucetButton and KeeperWidget for the demo keeper economy.
  */
 
@@ -42,7 +45,6 @@ import {
   getMaxMissed,
   getInterval,
   isActivated,
-  getCurrentEpoch,
   reportMissed,
 } from "@/lib/stellar";
 import { KeeperWidget } from "@/components/KeeperWidget";
@@ -100,7 +102,6 @@ export default function DashboardPage() {
       }
 
       const interval = chainInterval > 0 ? chainInterval : vault?.intervalSeconds ?? 60;
-      const epoch = await getCurrentEpoch(interval);
 
       setStatus({
         root,
@@ -110,7 +111,9 @@ export default function DashboardPage() {
         maxMissed: max || 3,
         activated,
         interval,
-        deadline: (Number(epoch) + 1) * interval,
+        // Mirrors the contract: keepers can report once ledger time passes
+        // last_checkin + interval + grace. 0 = not registered on-chain.
+        deadline: last > 0 ? last + interval : 0,
       });
       setLastRefresh(new Date());
     } catch (err) {
@@ -143,11 +146,21 @@ export default function DashboardPage() {
     }
   };
 
-  const deadlineMs = status ? status.deadline * 1000 : null;
-  const isOverdue = deadlineMs ? deadlineMs - Date.now() < 0 : false;
-  const isUrgent = deadlineMs
-    ? deadlineMs - Date.now() < status!.interval * 1000
-    : false;
+  // GRACE mirrors the contract's GRACE_PERIOD: reports are rejected before
+  // last_checkin + interval + grace, so the overdue banner waits for it too.
+  const GRACE_SECONDS = 60;
+  const deadlineMs = status && status.deadline > 0 ? status.deadline * 1000 : null;
+  const remainingMs = deadlineMs ? deadlineMs - Date.now() : null;
+  // Deadline passed (owner should check in immediately).
+  const isOverdue = remainingMs !== null && remainingMs < 0;
+  // Grace also elapsed: report_missed will now be accepted on-chain.
+  const isReportable =
+    remainingMs !== null && remainingMs < -GRACE_SECONDS * 1000;
+  // Approaching the deadline: within the last quarter of the interval.
+  const isUrgent =
+    remainingMs !== null &&
+    !isOverdue &&
+    remainingMs < (status!.interval * 1000) / 4;
 
   if (!identity) {
     return (
@@ -231,17 +244,20 @@ export default function DashboardPage() {
                 Check-in Overdue!
               </p>
               <p className="text-sm mt-1 mb-3" style={{ color: "var(--muted-foreground)" }}>
-                The current epoch has ended. Check in to reset your missed counter,
-                or a keeper can report the miss below.
+                {isReportable
+                  ? "The check-in window and grace period have passed. Check in now to reset your timer — or any keeper can report the miss below."
+                  : "Your check-in deadline has passed. You are in the grace period: check in now, before keepers can report the miss."}
               </p>
-              <button
-                onClick={handleReportMissed}
-                disabled={reporting || !address}
-                className="px-4 py-2 text-xs font-mono uppercase tracking-widest transition-colors hover:border-foreground disabled:opacity-40"
-                style={{ border: "1px solid var(--card-border)", color: "var(--foreground)" }}
-              >
-                {reporting ? "Reporting..." : "Report missed (keeper)"}
-              </button>
+              {isReportable && (
+                <button
+                  onClick={handleReportMissed}
+                  disabled={reporting || !address}
+                  className="px-4 py-2 text-xs font-mono uppercase tracking-widest transition-colors hover:border-foreground disabled:opacity-40"
+                  style={{ border: "1px solid var(--card-border)", color: "var(--foreground)" }}
+                >
+                  {reporting ? "Reporting..." : "Report missed (keeper)"}
+                </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -264,7 +280,7 @@ export default function DashboardPage() {
                 style={{ color: isOverdue ? "var(--destructive)" : isUrgent ? "var(--accent)" : "var(--primary)" }}
               />
               <span className="text-sm font-medium" style={{ color: "var(--muted-foreground)" }}>
-                Current Epoch Ends In
+                Next Check-in Due In
               </span>
             </div>
             <p
@@ -273,12 +289,16 @@ export default function DashboardPage() {
                 color: isOverdue ? "var(--destructive)" : isUrgent ? "var(--accent)" : "var(--foreground)",
               }}
             >
-              {status ? formatTimeRemaining(status.deadline) : "--"}
+              {status && status.deadline > 0 ? formatTimeRemaining(status.deadline) : "--"}
             </p>
-            {status && (
+            {status && status.deadline > 0 ? (
               <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
                 Deadline: {new Date(status.deadline * 1000).toLocaleString()} · interval{" "}
-                {status.interval}s
+                {status.interval}s · +60s grace before keepers can report
+              </p>
+            ) : (
+              <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                No on-chain check-in record for this identity yet.
               </p>
             )}
           </motion.div>

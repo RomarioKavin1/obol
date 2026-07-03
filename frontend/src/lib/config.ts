@@ -14,8 +14,14 @@ export const NETWORK_PASSPHRASE =
 
 export const NETWORK = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "TESTNET";
 
+// Two explorers, on purpose: stellarchain renders Soroban transactions well,
+// while stellar.expert has the richer contract pages (storage, invocations).
 export const EXPLORER =
   process.env.NEXT_PUBLIC_STELLAR_EXPLORER ?? "https://testnet.stellarchain.io";
+
+export const EXPLORER_CONTRACTS =
+  process.env.NEXT_PUBLIC_STELLAR_CONTRACT_EXPLORER ??
+  "https://stellar.expert/explorer/testnet";
 
 export const HORIZON_URL =
   process.env.NEXT_PUBLIC_STELLAR_HORIZON_URL ??
@@ -54,5 +60,5 @@ export function txUrl(hash: string): string {
 
 /** Explorer URL for a contract id. */
 export function contractUrl(id: string): string {
-  return `${EXPLORER}/contracts/${id}`;
+  return `${EXPLORER_CONTRACTS}/contract/${id}`;
 }

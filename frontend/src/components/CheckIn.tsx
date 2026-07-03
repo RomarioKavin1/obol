@@ -11,9 +11,10 @@
  * proof). The connected wallet only signs/pays the transaction; the proof
  * itself never reveals which identity commitment belongs to which wallet.
  *
- * Status cards (last check-in, missed/max, epoch deadline) come from registry
- * view reads; the on-chain per-identity interval overrides the locally stored
- * one when present. Contract error #10 (EpochMismatch) is special-cased: on the
+ * Status cards (last check-in, missed/max, next deadline) come from registry
+ * view reads; the deadline mirrors the contract's rule (last_checkin +
+ * interval, with a 60s grace before keepers may report) and the on-chain
+ * per-identity interval overrides the locally stored one when present. Contract error #10 (EpochMismatch) is special-cased: on the
  * 60s demo interval the epoch can roll over between proof generation and
  * wallet approval, so the proof's epoch no longer matches the ledger's.
  */
@@ -94,8 +95,9 @@ export function CheckIn() {
       setMaxMissed(max || 3);
       const useInterval = chainInterval > 0 ? chainInterval : interval;
       if (chainInterval > 0) setIntervalSeconds(chainInterval);
-      const epoch = await getCurrentEpoch(useInterval);
-      setDeadline((Number(epoch) + 1) * useInterval);
+      // Mirrors the contract's report_missed rule: the owner must check in
+      // before last_checkin + interval (keepers can report 60s of grace later).
+      setDeadline(last > 0 ? last + useInterval : null);
     } catch (err) {
       console.error(err);
     }
@@ -149,7 +151,11 @@ export function CheckIn() {
   );
 
   const deadlineMs = deadline ? deadline * 1000 : null;
-  const isUrgent = deadlineMs ? deadlineMs - Date.now() < interval * 1000 : false;
+  const remainingMs = deadlineMs ? deadlineMs - Date.now() : null;
+  const isOverdueNow = remainingMs !== null && remainingMs < 0;
+  // Urgent = inside the last quarter of the check-in window.
+  const isUrgent =
+    remainingMs !== null && (isOverdueNow || remainingMs < (interval * 1000) / 4);
 
   if (!identity) {
     return (
@@ -201,7 +207,11 @@ export function CheckIn() {
                 <Clock className="w-4 h-4" style={{ color: "var(--primary)" }} />
               )}
               <span className="text-sm font-semibold">
-                {isUrgent ? "Check-in Urgent!" : "Current Epoch Ends In"}
+                {isOverdueNow
+                  ? "Check-in Overdue!"
+                  : isUrgent
+                    ? "Check-in Urgent!"
+                    : "Next Check-in Due In"}
               </span>
             </div>
             <p

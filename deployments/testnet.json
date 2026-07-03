@@ -3,6 +3,7 @@
   "rpcUrl": "https://soroban-testnet.stellar.org",
   "networkPassphrase": "Test SDF Network ; September 2015",
   "explorer": "https://testnet.stellarchain.io",
+  "contractExplorer": "https://stellar.expert/explorer/testnet",
   "deployer": "GCF2TS44FELZGSFXG57OY6LPMOJOUL34SCKCY6OC52X7U5G2YAZZU5F6",
   "contracts": {
     "obol_verifier": "CBE4ACZCQTXTPGJVNDAEKSYZLUVJMUMUVMZCMDXSIE3EB67RTSRSKFQ6",
