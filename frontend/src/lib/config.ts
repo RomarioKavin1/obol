@@ -15,8 +15,7 @@ export const NETWORK_PASSPHRASE =
 export const NETWORK = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "TESTNET";
 
 export const EXPLORER =
-  process.env.NEXT_PUBLIC_STELLAR_EXPLORER ??
-  "https://stellar.expert/explorer/testnet";
+  process.env.NEXT_PUBLIC_STELLAR_EXPLORER ?? "https://testnet.stellarchain.io";
 
 export const HORIZON_URL =
   process.env.NEXT_PUBLIC_STELLAR_HORIZON_URL ??
@@ -33,10 +32,10 @@ export const READ_SOURCE =
 export const CONTRACTS = {
   livenessRegistry:
     process.env.NEXT_PUBLIC_LIVENESS_REGISTRY_ID ??
-    "CDQKTII66Z2BOMXOUU3WHGACAEM4XIUPLFORG5MZEKCVQSB6FMTSXGME",
+    "CD2NYC2U3OKZ5Z355H3UXE3MVUWCROWRFEH4UQ6NGIPCYYGDS3VDWSLC",
   vaultController:
     process.env.NEXT_PUBLIC_VAULT_CONTROLLER_ID ??
-    "CDQL4QEZN7QWMC3YTPNGI52IAVSXGNWAMCJD7UGHNFOOKONAI6T5WKOS",
+    "CAZST5N37ZYKNXYCUIQ4AKV553TSXTQWPURDRTAX3OFRQMNBEP3PI4IE",
   obolVerifier:
     process.env.NEXT_PUBLIC_OBOL_VERIFIER_ID ??
     "CBE4ACZCQTXTPGJVNDAEKSYZLUVJMUMUVMZCMDXSIE3EB67RTSRSKFQ6",
@@ -50,10 +49,10 @@ export const CONTRACTS = {
 
 /** Explorer URL for a transaction hash. */
 export function txUrl(hash: string): string {
-  return `${EXPLORER}/tx/${hash}`;
+  return `${EXPLORER}/transactions/${hash}`;
 }
 
 /** Explorer URL for a contract id. */
 export function contractUrl(id: string): string {
-  return `${EXPLORER}/contract/${id}`;
+  return `${EXPLORER}/contracts/${id}`;
 }

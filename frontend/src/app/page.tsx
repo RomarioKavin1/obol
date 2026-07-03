@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * Landing page. Pure presentation — no wallet or identity state and no contract
+ * writes. Explains the protocol flow (mint identity -> seal vault -> prove
+ * liveness -> silence releases funds) and links into /setup and /checkin.
+ *
+ * The "live on testnet" section is real, not decorative: PROOF_TX is the hash
+ * of an actual on-chain-verified UltraHonk check-in, and the contract cards link
+ * to the deployed testnet contracts from config.ts via txUrl()/contractUrl().
+ * If the contracts are redeployed, config.ts updates the cards automatically but
+ * PROOF_TX must be replaced with a check-in against the new deployment.
+ */
+
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
@@ -413,7 +425,7 @@ export default function HomePage() {
               <ul className="space-y-2 text-sm">
                 <li>
                   <a
-                    href="https://stellar.expert/explorer/testnet"
+                    href="https://testnet.stellarchain.io"
                     target="_blank"
                     rel="noreferrer"
                     className="hover:text-muted-foreground transition-colors"

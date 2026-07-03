@@ -2,17 +2,22 @@
   "network": "testnet",
   "rpcUrl": "https://soroban-testnet.stellar.org",
   "networkPassphrase": "Test SDF Network ; September 2015",
-  "explorer": "https://stellar.expert/explorer/testnet",
+  "explorer": "https://testnet.stellarchain.io",
   "deployer": "GCF2TS44FELZGSFXG57OY6LPMOJOUL34SCKCY6OC52X7U5G2YAZZU5F6",
   "contracts": {
     "obol_verifier": "CBE4ACZCQTXTPGJVNDAEKSYZLUVJMUMUVMZCMDXSIE3EB67RTSRSKFQ6",
-    "liveness_registry": "CDQKTII66Z2BOMXOUU3WHGACAEM4XIUPLFORG5MZEKCVQSB6FMTSXGME",
-    "vault_controller": "CDQL4QEZN7QWMC3YTPNGI52IAVSXGNWAMCJD7UGHNFOOKONAI6T5WKOS",
+    "liveness_registry": "CD2NYC2U3OKZ5Z355H3UXE3MVUWCROWRFEH4UQ6NGIPCYYGDS3VDWSLC",
+    "vault_controller": "CAZST5N37ZYKNXYCUIQ4AKV553TSXTQWPURDRTAX3OFRQMNBEP3PI4IE",
     "keeper_registry": "CCKEYJKGNNC475ELXZ56BT2A6WXWT3G32YG2KFDP2BLELHQ437F2LXMA",
     "mock_token": "CDEARWWPX4653XD27ZVDQ7UBNNSH36RSUGVNOR3GVYTMXUD5GWCOKCCQ"
   },
+  "previousDeployments": {
+    "note": "First registry/vault generation (leaves were not readable on-chain, so browser provers could only serve the first member). Superseded by the contracts above, which store leaves for client-side Merkle witnesses.",
+    "liveness_registry": "CDQKTII66Z2BOMXOUU3WHGACAEM4XIUPLFORG5MZEKCVQSB6FMTSXGME",
+    "vault_controller": "CDQL4QEZN7QWMC3YTPNGI52IAVSXGNWAMCJD7UGHNFOOKONAI6T5WKOS"
+  },
   "liveProofOfLife": {
-    "description": "A real UltraHonk proof of life verified on-chain through the LivenessRegistry.checkin path (cross-calls ObolVerifier, checks Merkle root + epoch + nullifier).",
+    "description": "A real UltraHonk proof of life verified on-chain through the LivenessRegistry.checkin path (cross-calls ObolVerifier, checks Merkle root + epoch + nullifier). Tx below is on the first-generation registry.",
     "registerTx": "c707a69ce20bbfdd30e83bb9b38b9f29f7dd9f3ae3de22dabdd2999c3bec6d1d",
     "checkinTx": "2f4083e8b52c05fb3b6d6e278fbdabe47749d7fa16952a40b27cc7612668ae72",
     "onChainMerkleRoot": "1e2265624abfdf1ba02fc21488d28d3630a50a3901bfd04ba3ab81ced9e63611"

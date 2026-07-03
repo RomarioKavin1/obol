@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Fixed top navigation, rendered once in the root layout above every page.
+ * Route links are derived from the NAV list (label lowercased -> /label), with
+ * the active route detected via usePathname and marked by an accent underline
+ * plus aria-current. Also hosts the testnet-explorer link and <ConnectWallet>,
+ * so wallet connection is reachable from anywhere in the app.
+ */
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectWallet } from "@/components/ConnectWallet";
@@ -56,7 +64,7 @@ export function Navbar() {
 
       <div className="flex items-center gap-5">
         <a
-          href="https://stellar.expert/explorer/testnet"
+          href="https://testnet.stellarchain.io"
           target="_blank"
           rel="noreferrer"
           className="hidden sm:flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
