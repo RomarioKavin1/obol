@@ -36,6 +36,27 @@ the moment of claim, and the claim is bound to their address so it cannot be fro
 
 ---
 
+## Not just inheritance: silent wallet backup
+
+Point the switch at yourself. If you keep two hardware wallets — a primary and a
+backup — seal the **backup wallet** as the beneficiary of a vault funded from the
+primary:
+
+- While everything is fine, you check in on cadence and nothing moves.
+- If the primary setup is lost, stolen, or destroyed — even if the Obol proof-of-life
+  key is lost along with it — you simply stop checking in. The switch trips and the
+  escrowed funds land on your backup hardware wallet, where you're waiting for them.
+- Because the beneficiary is sealed, **nothing on-chain distinguishes this from
+  inheritance**. Nobody watching the chain learns that you have a backup wallet, which
+  wallet it is, or that a recovery is even configured.
+
+Compared to conventional recovery: no seed phrase duplicated across hiding spots, no
+social-recovery guardians to dox and coordinate, no custodian. It is a time-locked,
+privacy-shielded recovery path — the same mechanism, aimed at your future self instead
+of an heir.
+
+---
+
 ## Why ZK on Stellar
 
 The zero-knowledge is **load-bearing** — it is not a decoration bolted onto a normal
